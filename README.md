@@ -25,7 +25,7 @@
 Откройте терминал и скопируйте репозиторий на ваш локальный компьютер:
 ```bash
 git clone https://github.com/plooshka/workshop1.git
-cd workshop1
+cd workshop1/heart_risk_api
 ```
 
 ### 2. Сборка Docker-образа
@@ -53,7 +53,7 @@ docker run -p 8000:8000 heart-risk-app
 ### 1. Клонируйте репозиторий (если еще не сделали)
 ```bash
 git clone https://github.com/plooshka/workshop1.git
-cd workshop1
+cd workshop1/heart_risk_api
 ```
 
 ### 2. Создайте и активируйте виртуальное окружение
