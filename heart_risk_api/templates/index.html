@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Предсказание риска сердечного приступа</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; color: #333; max-width: 1000px; margin: 40px auto; padding: 0 20px; background-color: #f4f7f6; }
+        .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #2c3e50; text-align: center; }
+        p { color: #555; }
+        form { margin-top: 30px; display: flex; flex-direction: column; align-items: center; }
+        input[type="file"] { border: 2px dashed #ddd; padding: 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+        input[type="file"]::file-selector-button { background-color: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; }
+        input[type="file"]::file-selector-button:hover { background-color: #2980b9; }
+        button { background: #2ecc71; color: white; border: none; padding: 12px 25px; font-size: 16px; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; }
+        button:hover { background: #27ae60; }
+        .results-table { margin-top: 40px; width: 100%; border-collapse: collapse; }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        .results-table th { background-color: #ecf0f1; }
+        .results-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .info-table { margin-top: 15px; width: 100%; border-collapse: collapse; font-size: 14px; }
+        .info-table th, .info-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .info-table th { background-color: #ecf0f1; font-weight: bold; }
+        .info-table td:first-child { text-align: center; }
+        .info-table code { background-color: #e8e8e8; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* Уменьшаем отступы между элементами */
+            gap: 5px 15px; /* Было: 10px 20px */
+            margin-top: 15px;
+            padding: 0;
+            list-style: none;
+        }
+        .info-item {
+            background-color: #f9f9f9;
+            /* Уменьшаем внутренние отступы */
+            padding: 6px 10px; /* Было: 10px */
+            border-radius: 4px; /* Чуть менее круглые углы */
+            border-left: 3px solid #3498db;
+        }
+        .info-item code {
+            font-weight: bold;
+            font-family: monospace;
+            color: #2c3e50;
+            /* Уменьшаем размер шрифта названия признака */
+            font-size: 13px; /* Было: не задано (обычно 14-16px) */
+        }
+        .info-item .description {
+            /* Уменьшаем размер шрифта описания */
+            font-size: 11px; /* Было: 13px */
+            color: #777;
+            display: block;
+            /* Убираем лишний отступ сверху у описания */
+            line-height: 1.2; /* Делаем текст плотнее */
+        }
+        .download-buttons button {
+            margin: 0 5px; /* Добавляем горизонтальный отступ */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Добро пожаловать!</h1>
+        <p>Это простое веб-приложение для предсказания риска сердечного приступа на основе данных о пациентах. Модель, работающая в фоновом режиме, была обучена с использованием градиентного бустинга (LightGBM).</p>
+        
+        <h2>Как это работает?</h2>
+        <p>1. Подготовьте CSV-файл с данными пациента(ов). Файл должен содержать колонку <strong>'id'</strong> и другие признаки, на которых обучалась модель.</p>
+         <!-- ШАГ 2: Добавляем саму таблицу -->
+         <ul class="info-grid">
+            {% for feature in features %}
+            <li class="info-item">
+                <code>{{ feature }}</code>
+                <small class="description">{{ descriptions.get(feature, 'Числовое значение') }}</small>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <p>2. Загрузите файл с помощью формы ниже.</p>
+        <p>3. Нажмите "Предсказать", и вы увидите таблицу с ID пациента и предсказанным уровнем риска.</p>
+
+        <!-- Форма для загрузки файла -->
+        <form action="/" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <button type="submit">Предсказать</button>
+        </form>
+
+        <!-- Блок для отображения результатов. Он появится, только если 'results' переданы в шаблон -->
+        {% if results %}
+        <h2>Результаты предсказания</h2>
+
+        <div class="download-buttons">
+            <button id="downloadJsonBtn">Скачать результат в JSON</button>
+            <button id="downloadCsvBtn">Скачать результат в CSV</button> <!-- Новая кнопка -->
+        </div>
+
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>ID Пациента</th>
+                    <th>Вероятность риска (0 - низкая, 1 - высокая)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for id, proba in results.items() %}
+                <tr>
+                    <td>{{ id }}</td>
+                    <td>{{ "%.4f"|format(proba) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- ШАГ 2: Добавляем JavaScript для обработки скачивания -->
+        <script>
+            // Этот скрипт выполнится только если на странице есть результаты
+            document.getElementById('downloadJsonBtn').addEventListener('click', function() {
+                // 1. Получаем JSON-строку, которую мы передали из FastAPI
+                // Jinja2 вставит сюда наши данные. `| safe` говорит шаблонизатору,
+                // что эту строку не нужно экранировать (менять кавычки и т.д.)
+                const jsonData = {{ results_json | safe }};
+                
+                // 2. Преобразуем строку обратно в JavaScript-объект, а затем снова в строку,
+                // чтобы гарантировать корректное форматирование.
+                const jsonString = JSON.stringify(jsonData, null, 4);
+
+                // 3. Создаем Blob (Binary Large Object) - это как бы файл в памяти браузера
+                const blob = new Blob([jsonString], { type: 'application/json' });
+
+                // 4. Создаем временную ссылку для скачивания этого файла
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'predictions.json'; // Имя файла для скачивания
+                
+                // 5. Программно "нажимаем" на эту ссылку, чтобы началось скачивание
+                document.body.appendChild(a);
+                a.click();
+                
+                // 6. Удаляем временную ссылку
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // --- Обработчик для CSV-кнопки ---
+            document.getElementById('downloadCsvBtn').addEventListener('click', function() {
+                // 1. Получаем CSV-строку из шаблона.
+                // Фильтр `tojson` безопасно преобразует строку Python (которая может содержать
+                // кавычки и переносы строк) в корректную строку JavaScript.
+                const csvData = {{ results_csv | tojson }};
+
+                // 2. Создаем Blob (файл в памяти) с правильным MIME-типом для CSV.
+                const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+
+                // 3. Остальная логика точно такая же, как для JSON.
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'predictions.csv'; // Имя файла для скачивания
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        </script>
+        {% endif %}
+    </div>
+    <!-- Поместите это под формой или под заголовком h1 -->
+{% if error %}
+<p style="color: red; background: #ffebee; padding: 10px; border-radius: 5px; text-align: center;">
+    <strong>Ошибка:</strong> {{ error }}
+</p>
+{% endif %}
+</body>
+</html>
